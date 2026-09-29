@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "scan.h"
-#include "inputs.h"
 
 static struct token currenttoken;
 static FILE *parseoutput;
@@ -26,12 +25,12 @@ static void parseerror(const char *message)
 
 static void match(int tokenid)
 {
-    char message[100];
     if (failed)
         return;
     if (currenttoken.id != tokenid) {
-        snprintf(message, sizeof(message), "%-12sexpected.", tokennames[tokenid]);
-        parseerror(message);
+        fprintf(parseoutput, "Parse Error: %-12sexpected. (line #%d)\n",
+                tokennames[tokenid], getlinenumber());
+        failed = 1;
         return;
     }
     advance();
@@ -60,7 +59,7 @@ static void Val(void)
         parseerror("Invalid Statement");
 }
 
-/* Lit -> - Val | Val; Litfollow -> ** Lit Litfollow | epsilon */
+/* Lit -> - Val | Val */
 static void Lit(void)
 {
     if (currenttoken.id == TokenMinus)
@@ -68,37 +67,59 @@ static void Lit(void)
     Val();
 }
 
+/* Litfollow -> ** Lit Litfollow | epsilon */
+static void Litfollow(void)
+{
+    if (!failed && currenttoken.id == TokenRaise) {
+        match(TokenRaise);
+        Lit();
+        Litfollow();
+    }
+}
+
+/* Fac -> Lit Litfollow */
 static void Fac(void)
 {
     Lit();
-    while (!failed && currenttoken.id == TokenRaise) {
-        match(TokenRaise);
-        Lit();
-    }
+    Litfollow();
 }
 
-/* Trm -> Fac Facfollow; Facfollow handles * and /. */
-static void Trm(void)
+/* Facfollow -> * Fac Facfollow | / Fac Facfollow | epsilon */
+static void Facfollow(void)
 {
-    Fac();
-    while (!failed && (currenttoken.id == TokenMultiply ||
-                       currenttoken.id == TokenDivide)) {
+    if (!failed && (currenttoken.id == TokenMultiply ||
+                    currenttoken.id == TokenDivide)) {
         int op = currenttoken.id;
         match(op);
         Fac();
+        Facfollow();
     }
 }
 
-/* Exp -> Trm Trmfollow; Trmfollow handles + and -. */
-static void Exp(void)
+/* Trm -> Fac Facfollow */
+static void Trm(void)
 {
-    Trm();
-    while (!failed && (currenttoken.id == TokenPlus ||
-                       currenttoken.id == TokenMinus)) {
+    Fac();
+    Facfollow();
+}
+
+/* Trmfollow -> + Trm Trmfollow | - Trm Trmfollow | epsilon */
+static void Trmfollow(void)
+{
+    if (!failed && (currenttoken.id == TokenPlus ||
+                    currenttoken.id == TokenMinus)) {
         int op = currenttoken.id;
         match(op);
         Trm();
+        Trmfollow();
     }
+}
+
+/* Exp -> Trm Trmfollow */
+static void Exp(void)
+{
+    Trm();
+    Trmfollow();
 }
 
 static void Rel(void)
@@ -133,9 +154,10 @@ static void Arg(void)
 
 static void Argfollow(void)
 {
-    while (!failed && currenttoken.id == TokenComma) {
+    if (!failed && currenttoken.id == TokenComma) {
         match(TokenComma);
         Arg();
+        Argfollow();
     }
 }
 
@@ -195,33 +217,50 @@ static void Stm(void)
 /* Blk -> Stm Blk | epsilon. A non-statement token selects epsilon. */
 static void Blk(void)
 {
-    while (!failed && (currenttoken.id == TokenIdentifier ||
-                       currenttoken.id == TokenPrint ||
-                       currenttoken.id == TokenIf))
+    if (!failed && (currenttoken.id == TokenIdentifier ||
+                    currenttoken.id == TokenPrint ||
+                    currenttoken.id == TokenIf)) {
         Stm();
+        Blk();
+    }
+}
+
+/* Prg -> Blk EndOfFile */
+static void Prg(void)
+{
+    Blk();
+    match(TokenEndOfFile);
 }
 
 static const char *basenameof(const char *path)
 {
-    const char *slash = strrchr(path, '/');
-    const char *backslash = strrchr(path, '\\');
-    if (slash == NULL || (backslash != NULL && backslash > slash))
-        slash = backslash;
-    return slash == NULL ? path : slash + 1;
+    const char *name = path;
+    while (*path != '\0') {
+        if (*path == '/' || *path == '\\')
+            name = path + 1;
+        path++;
+    }
+    return name;
 }
 
-static int outputname(char *out, size_t size, const char *input)
+static int outputname(char *out, int size, const char *input)
 {
-    size_t n = strlen(input);
+    int n = strlen(input);
     const char *suffix = "_output_parse.txt";
-    if (n >= 4 && strcmp(input + n - 4, ".txt") == 0)
-        n -= 4;
-    if (n >= 6 && strncmp(input + n - 6, "_input", 6) == 0)
-        n -= 6;
-    if (n + strlen(suffix) + 1 > size)
+    if (n + 1 > size)
         return -1;
-    memcpy(out, input, n);
-    strcpy(out + n, suffix);
+    strcpy(out, input);
+    if (n >= 4 && strcmp(out + n - 4, ".txt") == 0) {
+        n -= 4;
+        out[n] = '\0';
+    }
+    if (n >= 6 && strcmp(out + n - 6, "_input") == 0) {
+        n -= 6;
+        out[n] = '\0';
+    }
+    if (n + (int)strlen(suffix) + 1 > size)
+        return -1;
+    strcat(out, suffix);
     return 0;
 }
 
@@ -246,8 +285,7 @@ static int parsefile(const char *input)
     setscanoutput(parseoutput);
     failed = 0;
     advance();
-    Blk();
-    match(TokenEndOfFile);
+    Prg();
     if (!failed && getlexicalerrors() == 0)
         fprintf(parseoutput, "%s is a valid SimpCalc program\n", basenameof(input));
     result = failed ? 2 : (getlexicalerrors() != 0 ? 1 : 0);
@@ -258,5 +296,17 @@ static int parsefile(const char *input)
 
 int main(int argc, char **argv)
 {
-    return runinputs(argc, argv, parsefile);
+    int i, result = 0;
+    if (argc < 2) {
+        printf("Usage: compute input1.txt [input2.txt ...]\n");
+        return 1;
+    }
+    for (i = 1; i < argc; i++) {
+        int status = parsefile(argv[i]);
+        if (status == 2)
+            return 1;
+        if (status != 0)
+            result = 1;
+    }
+    return result;
 }

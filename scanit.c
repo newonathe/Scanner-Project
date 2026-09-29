@@ -3,20 +3,25 @@
 #include <stdio.h>
 #include <string.h>
 #include "scan.h"
-#include "inputs.h"
 
-static int outputname(char *out, size_t size, const char *input)
+static int outputname(char *out, int size, const char *input)
 {
-    size_t n = strlen(input);
+    int n = strlen(input);
     const char *suffix = "_output_scan.txt";
-    if (n >= 4 && strcmp(input + n - 4, ".txt") == 0)
-        n -= 4;
-    if (n >= 6 && strncmp(input + n - 6, "_input", 6) == 0)
-        n -= 6;
-    if (n + strlen(suffix) + 1 > size)
+    if (n + 1 > size)
         return -1;
-    memcpy(out, input, n);
-    strcpy(out + n, suffix);
+    strcpy(out, input);
+    if (n >= 4 && strcmp(out + n - 4, ".txt") == 0) {
+        n -= 4;
+        out[n] = '\0';
+    }
+    if (n >= 6 && strcmp(out + n - 6, "_input") == 0) {
+        n -= 6;
+        out[n] = '\0';
+    }
+    if (n + (int)strlen(suffix) + 1 > size)
+        return -1;
+    strcat(out, suffix);
     return 0;
 }
 
@@ -54,5 +59,13 @@ static int scanfile(const char *input)
 
 int main(int argc, char **argv)
 {
-    return runinputs(argc, argv, scanfile);
+    int i, result = 0;
+    if (argc < 2) {
+        printf("Usage: scanit input1.txt [input2.txt ...]\n");
+        return 1;
+    }
+    for (i = 1; i < argc; i++)
+        if (scanfile(argv[i]) != 0)
+            result = 1;
+    return result;
 }

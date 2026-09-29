@@ -1,6 +1,3 @@
-#ifndef SCAN_H
-#define SCAN_H
-
 #include <stdio.h>
 #include "token.h"
 
@@ -10,5 +7,3 @@ void setscanoutput(FILE *output);
 struct token gettoken(void);
 int getlinenumber(void);
 int getlexicalerrors(void);
-
-#endif

@@ -1,6 +1,5 @@
 /* SimpCalc scanner: each call to gettoken() returns one token. */
 
-#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include "scan.h"
@@ -12,6 +11,28 @@ static int tokenline = 1;
 static int lexicalerrors;
 static int pushback;
 static int charread;
+
+/* Character classes used by the scanner's token paths. */
+static int digit(int c)
+{
+    return c >= '0' && c <= '9';
+}
+
+static int letter(int c)
+{
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+}
+
+static int whitespace(int c)
+{
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r' ||
+           c == '\f' || c == '\v';
+}
+
+static int printable(int c)
+{
+    return c >= ' ' && c <= '~';
+}
 
 int openfile(const char *filename)
 {
@@ -121,7 +142,7 @@ static struct token identifier(int first)
         if (!addchar(&t, &length, c))
             too_long = 1;
         c = mygetchar();
-    } while (isalnum((unsigned char)c) || c == '_');
+    } while (letter(c) || digit(c) || c == '_');
     putback(c);
     if (too_long)
         return lexicalerror("Illegal character/character sequence");
@@ -137,14 +158,14 @@ static struct token number(int first)
         if (!addchar(&t, &length, c))
             too_long = 1;
         c = mygetchar();
-    } while (isdigit((unsigned char)c));
+    } while (digit(c));
 
     if (c == '.') {
         if (!addchar(&t, &length, c))
             too_long = 1;
         c = mygetchar();
-        if (!isdigit((unsigned char)c)) {
-            if (!isalpha((unsigned char)c) && c != '_')
+        if (!digit(c)) {
+            if (!letter(c) && c != '_')
                 putback(c);
             return lexicalerror("Invalid number format");
         }
@@ -152,7 +173,7 @@ static struct token number(int first)
             if (!addchar(&t, &length, c))
                 too_long = 1;
             c = mygetchar();
-        } while (isdigit((unsigned char)c));
+        } while (digit(c));
     }
 
     if (c == 'e' || c == 'E') {
@@ -164,8 +185,8 @@ static struct token number(int first)
                 too_long = 1;
             c = mygetchar();
         }
-        if (!isdigit((unsigned char)c)) {
-            if (!isalpha((unsigned char)c) && c != '_')
+        if (!digit(c)) {
+            if (!letter(c) && c != '_')
                 putback(c);
             return lexicalerror("Invalid number format");
         }
@@ -173,7 +194,7 @@ static struct token number(int first)
             if (!addchar(&t, &length, c))
                 too_long = 1;
             c = mygetchar();
-        } while (isdigit((unsigned char)c));
+        } while (digit(c));
     }
     putback(c);
     if (too_long)
@@ -187,7 +208,7 @@ static struct token stringtoken(void)
     int length = 0, too_long = 0, bad_character = 0, c;
     addchar(&t, &length, '"');
     while ((c = mygetchar()) != EOF && c != '\n') {
-        if (!isprint((unsigned char)c))
+        if (!printable(c))
             bad_character = 1;
         if (!addchar(&t, &length, c))
             too_long = 1;
@@ -225,7 +246,7 @@ struct token gettoken(void)
         tokenline = linenum;
         if (c == EOF)
             return newtoken(TokenEndOfFile);
-        if (isspace((unsigned char)c))
+        if (whitespace(c))
             continue;
         if (c == '/') {
             next = mygetchar();
@@ -240,9 +261,9 @@ struct token gettoken(void)
         break;
     }
 
-    if (isalpha((unsigned char)c) || c == '_')
+    if (letter(c) || c == '_')
         return identifier(c);
-    if (isdigit((unsigned char)c))
+    if (digit(c))
         return number(c);
     if (c == '"')
         return stringtoken();
@@ -279,7 +300,7 @@ struct token gettoken(void)
             next = mygetchar();
             if (next == '=') return symbol(TokenNotEqual, c, next);
             /* The sample recovery consumes one letter after a lone '!'. */
-            if (!isalpha((unsigned char)next) && next != '_')
+            if (!letter(next) && next != '_')
                 putback(next);
             return lexicalerror("Illegal character/character sequence");
         default:
