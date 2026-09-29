@@ -1,3 +1,8 @@
+/* token.c
+ * Author: Ethan Owen Taruc and Criztan Evangelista
+ * Names printed for the scanner's token IDs.
+ */
+
 #include "token.h"
 
 const char *tokennames[] =

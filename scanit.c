@@ -1,4 +1,7 @@
-/* Scanner tester: write the tokens for each input file. */
+/* scanit.c
+ * Author: Ethan Owen Taruc and Criztan Evangelista
+ * Scanner tester: write the tokens for each input file.
+ */
 
 #include <stdio.h>
 #include <string.h>

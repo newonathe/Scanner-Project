@@ -1,4 +1,7 @@
-/* Recursive descent parser for the SimpCalc grammar in the project handout. */
+/* compute.c
+ * Author: Ethan Owen Taruc and Criztan Evangelista
+ * Recursive descent parser for the SimpCalc grammar in the project handout.
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -8,6 +11,7 @@ static struct token currenttoken;
 static FILE *parseoutput;
 static int failed;
 
+/* Continue parsing after a lexical error has been reported. */
 static void advance(void)
 {
     do {

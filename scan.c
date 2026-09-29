@@ -1,4 +1,7 @@
-/* SimpCalc scanner: each call to gettoken() returns one token. */
+/* scan.c
+ * Author: Ethan Owen Taruc and Criztan Evangelista
+ * SimpCalc scanner: each call to gettoken() returns one token.
+ */
 
 #include <stdio.h>
 #include <string.h>
@@ -117,6 +120,7 @@ static struct token lexicalerror(const char *message)
     return newtoken(TokenError);
 }
 
+/* Check reserved words after reading an identifier. */
 static int keyword(const char *word)
 {
     static const struct {
@@ -150,6 +154,7 @@ static struct token identifier(int first)
     return t;
 }
 
+/* Read a whole number, optional decimal part, and optional exponent. */
 static struct token number(int first)
 {
     struct token t = newtoken(TokenNumber);
@@ -202,6 +207,7 @@ static struct token number(int first)
     return t;
 }
 
+/* A string ends at its closing quote on the same line. */
 static struct token stringtoken(void)
 {
     struct token t = newtoken(TokenString);
