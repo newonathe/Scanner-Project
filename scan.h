@@ -1,8 +1,14 @@
-#include "token.h"
-#define FALSE 0
-#define TRUE 1
-int openfile(char *filename);
-struct token gettoken();
-int getlinenumber();
+#ifndef SCAN_H
+#define SCAN_H
 
-//placeholder
+#include <stdio.h>
+#include "token.h"
+
+int openfile(const char *filename);
+void closefile(void);
+void setscanoutput(FILE *output);
+struct token gettoken(void);
+int getlinenumber(void);
+int getlexicalerrors(void);
+
+#endif

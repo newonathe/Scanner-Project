@@ -1,3 +1,7 @@
+#ifndef TOKEN_H
+#define TOKEN_H
+
+/* One token returned by gettoken(). ID zero represents a lexical error. */
 struct token {
     int id;
     char lexeme[1000];
@@ -5,6 +9,7 @@ struct token {
 
 extern const char *tokennames[];
 
+#define TokenError          0
 #define TokenIdentifier     1
 #define TokenNumber         2
 #define TokenString         3
@@ -26,3 +31,13 @@ extern const char *tokennames[];
 #define TokenGTEqual       19
 #define TokenNotEqual      20
 #define TokenEndOfFile     21
+#define TokenPrint         22
+#define TokenIf            23
+#define TokenElse          24
+#define TokenEndif         25
+#define TokenSqrt          26
+#define TokenAnd           27
+#define TokenOr            28
+#define TokenNot           29
+
+#endif
